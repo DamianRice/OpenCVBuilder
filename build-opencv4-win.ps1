@@ -51,7 +51,7 @@ param (
 
     [Parameter(Mandatory = $false)]
     [ValidateSet('Release', 'Debug', 'MinSizeRel', 'RelWithDebInfo')]
-    [string] $BuildType = 'Debug'
+    [string] $BuildType = 'Release'
 )
 
 #Set-PSDebug -Trace 1
