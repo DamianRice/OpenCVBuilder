@@ -48,7 +48,7 @@
 -DWITH_OPENCL_SVM=OFF
 -DWITH_ITT=OFF
 -DWITH_PROTOBUF=OFF
--DWITH_QUIRC=OFF
+-DWITH_QUIRC=ON
 -DWITH_TENGINE=OFF
 -DWITH_ONNX=OFF
 -DBUILD_DOCS=OFF
@@ -71,7 +71,7 @@
 -DBUILD_opencv_dnn=OFF
 -DBUILD_opencv_imgcodecs=ON
 -DBUILD_opencv_videoio=OFF
--DBUILD_opencv_calib3d=OFF
+-DBUILD_opencv_calib3d=ON
 -DBUILD_opencv_flann=OFF
 -DBUILD_opencv_objdetect=ON
 -DBUILD_opencv_stitching=OFF
