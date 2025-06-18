@@ -77,3 +77,14 @@ OpenCV在OCR中只是做图像的读取保存、编解码、缩放等，可以�
 
 - 4.9.0 Windows WITH_OPENCL=ON, for opencv-rust
 - 4.10.0开始提高了对gcc版本的要求，故缺少某些平台的包
+
+
+# 定制模块声明
+需要
+- [x] https://github.com/opencv/opencv_3rdparty/
+- [x] https://github.com/opencv/opencv_contrib/
+
+构建xfeatures2d时需要:
+opencv_3rdparty 最好clone的时候指定好branch
+1. checkout contrib_xfeatures2d_boostdesc_20161012 把所有*.i文件放在opencv_contrib/modules/xfeatures2d/src/路径下
+2. checkout contrib_xfeatures2d_vgg_20160317 把所有*.i文件放在opencv_contrib/modules/xfeatures2d/src/路径下

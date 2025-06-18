@@ -1,7 +1,7 @@
 name: windows
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: 
 
 jobs:
   windows:
@@ -11,25 +11,39 @@ jobs:
         ver:
           - { cv: 4.10.0, jdk: 8, ant: 1.10.14 }
         list:
-#          - { win_ver: 2019, vs_name: vs2015, vs_ver: v140 }
-#          - { win_ver: 2019, vs_name: vs2017, vs_ver: v141 }
-#          - { win_ver: 2019, vs_name: vs2019, vs_ver: v142 }
-          - { win_ver: 2022, vs_name: vs2022, vs_ver: v143 }
+         - { win_ver: 2019, vs_name: vs2015, vs_ver: v140 }
+         - { win_ver: 2019, vs_name: vs2017, vs_ver: v141 }
+         - { win_ver: 2019, vs_name: vs2019, vs_ver: v142 }
+         - { win_ver: 2022, vs_name: vs2022, vs_ver: v143 }
         arch:
           [
             x64,
-#            x86,
-#            arm64,
+            x86,
+            arm64,
           ]
         crt:
           [
             md,
             mt,
           ]
+        config:
+          [Release, Debug, RelWithDebInfo, MinSizeRel]
+
+        # 排除规则：只保留 list=2022/v143 + arch=x64 的组合
         exclude:
+          # 排除所有非 2022 的 Windows 版本
           - list: { win_ver: 2019, vs_name: vs2015, vs_ver: v140 }
-            arch: arm64
           - list: { win_ver: 2019, vs_name: vs2017, vs_ver: v141 }
+          - list: { win_ver: 2019, vs_name: vs2019, vs_ver: v142 }
+          
+          # 排除所有非 x64 架构
+          - arch: x86
+          - arch: arm64
+          
+          # 确保 2022 版本中只保留 x64 架构
+          - list: { win_ver: 2022, vs_name: vs2022, vs_ver: v143 }
+            arch: x86
+          - list: { win_ver: 2022, vs_name: vs2022, vs_ver: v143 }
             arch: arm64
 
     runs-on: windows-${{ matrix.list.win_ver }}
@@ -39,10 +53,11 @@ jobs:
     env:
       BUILD_SCRIPT: build-opencv4-win.ps1
       BUILD_OPTIONS: opencv4_cmake_options.txt
-      PKG_NAME: opencv-${{ matrix.ver.cv }}-windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}
-      JAVA_PKG_NAME: opencv-${{ matrix.ver.cv }}-windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}-java
+      PKG_NAME: opencv-${{ matrix.ver.cv }}-windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}-${{ matrix.config }}
+      JAVA_PKG_NAME: opencv-${{ matrix.ver.cv }}-windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}-${{ matrix.config }}-java
 
     steps:
+      #################################################################################################################################################################
       # Setup JDK
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -57,7 +72,9 @@ jobs:
 
       - name: ant version
         run: ant -version
-
+      #################################################################################################################################################################
+      
+      #################################################################################################################################################################
       # 检出代码
       - uses: actions/checkout@v4
 
@@ -69,17 +86,20 @@ jobs:
           path: opencv-${{ matrix.ver.cv }} # opencv-4.10.0
           ref: ${{ matrix.ver.cv }}
           submodules: recursive
+      #################################################################################################################################################################
 
+      #################################################################################################################################################################
       # 复制
       - name: copy
         run: |
           cp ${{ env.BUILD_SCRIPT }} opencv-${{ matrix.ver.cv }}
           cp ${{ env.BUILD_OPTIONS }} opencv-${{ matrix.ver.cv }}
+      #################################################################################################################################################################
 
+      #################################################################################################################################################################
       # 编译
       # https://github.com/ilammy/msvc-dev-cmd
       #- uses: ilammy/msvc-dev-cmd@v1
-
       - name: build
         shell: powershell
         run: |
@@ -103,7 +123,9 @@ jobs:
           cp -r opencv-${{ matrix.ver.cv }}/build-${{ matrix.arch }}-${{ matrix.list.vs_ver }}-${{ matrix.crt }}/install/java ${{ env.JAVA_PKG_NAME }}
           7z a ${{ env.JAVA_PKG_NAME }}.7z ${{ env.JAVA_PKG_NAME }}
           rm ${{ env.JAVA_PKG_NAME }} -r -fo
+      #################################################################################################################################################################
 
+      #################################################################################################################################################################
       # 上传artifact
       - name: upload lib
         uses: actions/upload-artifact@v4
@@ -116,6 +138,7 @@ jobs:
         with:
           name: ${{ env.JAVA_PKG_NAME }}
           path: ${{ env.JAVA_PKG_NAME }}.7z
+      #################################################################################################################################################################
 
   release:
     needs: [ windows ]
