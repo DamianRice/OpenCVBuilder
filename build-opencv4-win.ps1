@@ -1,12 +1,12 @@
 ﻿<#
-.SYNOPSIS build opencv for windows by benjaminwan
+.SYNOPSIS build opencv for windows
 .DESCRIPTION
 This is a powershell script for builid opencv in windows.
 Put this script to opencv root path, and then run .\build-opencv-win.ps1
 attentions:
   1) Set ExecutionPolicy before run this script: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-.PARAMETER VsArch 
+.PARAMETER VsArch
 By default, we run this script on 64 bits Windows, this param is x64.
 Other options are for cross-compiling.
   a) .\build-opencv-win.ps1 -VsArch x64
@@ -54,13 +54,13 @@ param (
     [string] $BuildType = 'Release'
 )
 
-#Set-PSDebug -Trace 1
-Set-PSDebug -Trace 0
+# Set-PSDebug -Trace 1
+Set-PSDebug -Trace 0;
 
 # 清屏
-Clear-Host
+Clear-Host;
 
-Write-Host "Params: VsArch=$VsArch VsVer=$VsVer VsCRT=$VsCRT BuildJava=$BuildJava BuildType=$BuildType"
+Write-Host "Params: VsArch=$VsArch VsVer=$VsVer VsCRT=$VsCRT BuildJava=$BuildJava BuildType=$BuildType" -ForegroundColor Cyan;
 
 $genArgs = @();
 
@@ -89,6 +89,9 @@ $genArgs += ('-DCMAKE_SYSTEM_PROCESSOR={0}' -f $ArchFlag);
 $genArgs += ('-DCMAKE_SYSTEM_NAME=Windows');
 $genArgs += ('-DCMAKE_BUILD_TYPE={0}' -f $BuildType);
 $genArgs += ('-DCMAKE_CONFIGURATION_TYPES={0}' -f $BuildType);
+
+$opencv_contrib_dir = Convert-Path -LiteralPath "..\opencv_contrib\modules"
+$genArgs += ('-DOPENCV_EXTRA_MODULES_PATH={0}' -f $opencv_contrib_dir);
 
 $OptionsFile = "opencv4_cmake_options.txt"
 
@@ -130,21 +133,29 @@ if (!(Test-Path -Path $OutPutPath))
     Write-Host "Create path:$OutPutPath"
     New-Item -Path "$OutPutPath" -ItemType Directory
 }
-$genArgs += ('-DCMAKE_INSTALL_PREFIX={0}/install' -f $OutPutPath);
-$genArgs += ('-B{0}' -f $OutPutPath);
+$genArgs += ('-DCMAKE_INSTALL_PREFIX={0}/install/{1}' -f $OutPutPath, $BuildType);
+$genArgs += ('-B {0}' -f $OutPutPath);
 
 # Create the generate call
 $genCall = ('cmake {0}' -f ($genArgs -Join ' '));
 
-Write-Host $genCall;
+Write-Host $genCall -ForegroundColor Cyan;
 Invoke-Expression $genCall
 
 # Create the build call
 $LogicalProcessorsNum = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
-$buildArgs += @('--build', $OutPutPath, '--config', $BuildType, '--parallel', $LogicalProcessorsNum, '--target install');
+
+$buildArgs += @('--build', $OutPutPath, '--config', $BuildType, '--parallel', $LogicalProcessorsNum);
 $buildCall = ('cmake {0}' -f ($buildArgs -Join ' '));
 
-Write-Host $buildCall;
+$installArgs += @('--install', $OutPutPath, '--config', $BuildType)
+$installCall = ('cmake {0}' -f ($installArgs -Join ' '))
+
+Clear-Host
+
+Write-Host $buildCall -ForegroundColor Cyan;
 Invoke-Expression $buildCall;
 
+Write-Host $installCall -ForegroundColor Cyan;
+Invoke-Expression $installCall;
 
