@@ -42,7 +42,7 @@ jobs:
           - arch: ppc64le # OpenPower POWER8架构
           - arch: 386 # 80386应该已经没人用了吧
 
-    runs-on: ubuntu-24.04 [Beta] #这里要锁版本，因为ubuntu24.04是beta镜像,没法动态
+    runs-on: ubuntu-22.04 #这里要锁版本，因为ubuntu24.04是beta镜像,没法动态
 
     name: ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}-${{ matrix.config }}
 
