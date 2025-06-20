@@ -1,0 +1,129 @@
+name: ubuntu-cmake-builder
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ver: [3.28.6]
+        os_name: [ubuntu]
+        list:
+          - { os_ver: 14.04, os_id: trusty }
+          - { os_ver: 16.04, os_id: xenial }
+          - { os_ver: 18.04, os_id: bionic }
+          - { os_ver: 20.04, os_id: focal }
+          - { os_ver: 22.04, os_id: jammy }
+          - { os_ver: 24.04, os_id: numbat }
+        arch:
+          [
+            386,
+            amd64,
+            arm,
+            arm64,
+            ppc64le,
+          ]
+        exclude:
+          # 排除22.04以前的ubuntu
+          - list: { os_ver: 14.04, os_id: trusty }
+          - list: { os_ver: 16.04, os_id: xenial }
+          - list: { os_ver: 18.04, os_id: bionic }
+          - list: { os_ver: 20.04, os_id: focal }
+
+          # 排除两个特殊架构
+          - arch: ppc64le # OpenPower POWER8架构
+          - arch: 386 # 80386应该已经没人用了吧
+
+    name: ${{ matrix.os_name }}-${{ matrix.list.os_ver }}-${{ matrix.arch }}
+
+    env:
+      PKG_NAME: cmake-${{ matrix.ver }}-${{ matrix.os_name }}-${{ matrix.list.os_ver }}-${{ matrix.arch }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: download source
+        run: |
+          wget https://github.com/Kitware/CMake/releases/download/v${{ matrix.ver }}/cmake-${{ matrix.ver }}.tar.gz -O cmake-${{ matrix.ver }}.tar.gz
+          tar -xf cmake-${{ matrix.ver }}.tar.gz
+          mv cmake-${{ matrix.ver }} cmake-${{ matrix.ver }}-source
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - Install host qemu-static
+        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+
+      - name: Host - Docker multiarch bootstrap
+        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Host - Create Docker template env file
+        run: |
+          echo "PATH=/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" > env.custom
+          echo "DEBIAN_FRONTEND=noninteractive" >> env.custom
+          echo "TZ=Etc/UTC" >> env.custom
+
+      - name: Host - Create docker container
+        run: docker run --name ${{ matrix.os_name }} --env-file env.custom --platform linux/${{ matrix.arch }} -it -d -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_name }}:${{ matrix.list.os_id }}
+
+      - name: Docker - apt-get update
+        run: docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get update
+
+      - name: Docker - apk install build deps
+        run: docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get install -y build-essential libssl-dev zlib1g-dev
+
+      - name: Docker - configure
+        run: docker exec --env-file env.custom -w /root/cmake-${{ matrix.ver }}-source ${{ matrix.os_name }} ./bootstrap --parallel="$(nproc)" --prefix=/root/cmake-${{ matrix.ver }} -- -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc" -DOPENSSL_USE_STATIC_LIBS=TRUE
+
+      - name: Docker - build
+        run: docker exec --env-file env.custom -w /root/cmake-${{ matrix.ver }}-source ${{ matrix.os_name }} make -j"$(nproc)" install
+
+      # 7z压缩
+      - name: Host - 7zip
+        run: 7z a ${{ env.PKG_NAME }}.7z cmake-${{ matrix.ver }}
+
+      # 上传artifact
+      - name: upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.7z
+
+#      # 获取所有的git log和tag
+#      - name: Unshallow
+#        run: git fetch --prune --unshallow
+#
+#      # 获取git log 从 previousTag 到 lastTag
+#      - name: Get git log
+#        id: git-log
+#        run: |
+#          previousTag=$(git describe --abbrev=0 --tags `git rev-list --tags --skip=1 --max-count=1`)
+#          lastTag=$(git describe --abbrev=0 --tags)
+#          echo "previousTag:$previousTag ~ lastTag:$lastTag"
+#          log=$(git log $previousTag..$lastTag --pretty=format:'- %cd %an: %s\n' --date=format:'%Y-%m-%d %H:%M:%S')
+#          echo "$log"
+#          echo "log_state="$log"" >> $GITHUB_ENV
+#
+#      # 创建Changelog文件 triggered by git tag push
+#      - name: Generate Changelog
+#        if: startsWith(github.ref, 'refs/tags/')
+#        run: |
+#          echo -e '${{ env.log_state }}' > release.md
+
+      # 创建release 上传release
+      # https://github.com/marketplace/actions/create-release
+      - name: Create release and upload-archive
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          bodyFile: release.md
+          artifacts: ${{ env.PKG_NAME }}.7z
+          allowUpdates: true
+          artifactContentType: application/x-7z-compressed
+          token: ${{ secrets.GITHUB_TOKEN }}

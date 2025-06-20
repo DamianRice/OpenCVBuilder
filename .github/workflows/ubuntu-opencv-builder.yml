@@ -1,4 +1,4 @@
-name: ubuntu
+name: ubuntu-OpenCV-Builder
 
 on:
   workflow_dispatch:
@@ -100,11 +100,11 @@ jobs:
           7z x ${{ env.PYTHON_NAME }}.7z -aoa
           rm ${{ env.PYTHON_NAME }}.7z
 
-      - name: deploy ant
-        run: |
-          wget https://dlcdn.apache.org/ant/binaries/${{ env.ANT_NAME }}.tar.gz -O ${{ env.ANT_NAME }}.tar.gz
-          tar -xf ${{ env.ANT_NAME }}.tar.gz
-          rm ${{ env.ANT_NAME }}.tar.gz
+#      - name: deploy ant
+#        run: |
+#          wget https://dlcdn.apache.org/ant/binaries/${{ env.ANT_NAME }}.tar.gz -O ${{ env.ANT_NAME }}.tar.gz
+#          tar -xf ${{ env.ANT_NAME }}.tar.gz
+#          rm ${{ env.ANT_NAME }}.tar.gz
       #################################################################################################################################################################
       #################################################################################################################################################################
       - name: Host - Create Docker template env file
@@ -160,11 +160,11 @@ jobs:
       #################################################################################################################################################################
       #################################################################################################################################################################
       # 上传artifact
-#      - name: upload
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: ${{ env.PKG_NAME }}
-#          path: ${{ env.PKG_NAME }}.7z
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.PKG_NAME }}.7z
 
 #      - name: upload
 #        uses: actions/upload-artifact@v4
