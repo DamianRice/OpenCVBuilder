@@ -48,7 +48,7 @@ jobs:
 
     runs-on: windows-${{ matrix.list.win_ver }}
 
-    name: windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}
+    name: windows-${{ matrix.list.vs_name }}-${{ matrix.arch }}-${{ matrix.crt }}-${{ matrix.config }}
 
     env:
       BUILD_SCRIPT: build-opencv4-win.ps1
@@ -84,6 +84,14 @@ jobs:
         with:
           repository: opencv/opencv
           path: opencv-${{ matrix.ver.cv }} # opencv-4.10.0
+          ref: ${{ matrix.ver.cv }}
+          submodules: recursive
+      # 检出opencv_contrib
+      - name: checkout opencv
+        uses: actions/checkout@v4
+        with:
+          repository: opencv/opencv_contrib
+          path: opencv_contrib  #因为编译脚本写死了这个路径，所以不能加版本了，但是和OpenCV需要保持一致
           ref: ${{ matrix.ver.cv }}
           submodules: recursive
       #################################################################################################################################################################
