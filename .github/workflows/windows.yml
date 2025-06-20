@@ -87,7 +87,7 @@ jobs:
           ref: ${{ matrix.ver.cv }}
           submodules: recursive
       # 检出opencv_contrib
-      - name: checkout opencv
+      - name: checkout opencv contrib
         uses: actions/checkout@v4
         with:
           repository: opencv/opencv_contrib

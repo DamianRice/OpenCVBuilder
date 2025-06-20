@@ -5,8 +5,6 @@ on:
 
 jobs:
   ubuntu:
-    runs-on: ubuntu-22.04
-
     strategy:
       fail-fast: false
       matrix:
@@ -19,6 +17,7 @@ jobs:
           - { os_ver: 18.04, os_id: bionic }
           - { os_ver: 20.04, os_id: focal }
           - { os_ver: 22.04, os_id: jammy }
+          - { os_ver: 24.04, os_id: numbat }
         arch:
           [
             386,
@@ -27,27 +26,38 @@ jobs:
             arm64,
             ppc64le,
           ]
+        config:
+          [
+            Debug,
+            Release
+          ]
         exclude:
+          # 排除22.04以前的ubuntu
           - list: { os_ver: 14.04, os_id: trusty }
-            arch: ppc64le
+          - list: { os_ver: 16.04, os_id: xenial }
+          - list: { os_ver: 18.04, os_id: bionic }
           - list: { os_ver: 20.04, os_id: focal }
-            arch: 386
-          - list: { os_ver: 22.04, os_id: jammy }
-            arch: 386
 
-    name: ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}
+          # 排除两个特殊架构
+          - arch: ppc64le # OpenPower POWER8架构
+          - arch: 386 # 80386应该已经没人用了吧
+
+    runs-on: ubuntu-24.04 [Beta] #这里要锁版本，因为ubuntu24.04是beta镜像,没法动态
+
+    name: ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}-${{ matrix.config }}
 
     env:
       BUILD_SCRIPT: build-opencv4-linux.sh
       BUILD_OPTIONS: opencv4_cmake_options.txt
-      PKG_NAME: opencv-${{ matrix.ver.cv }}-ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}
-      JAVA_PKG_NAME: opencv-${{ matrix.ver.cv }}-ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}-java
+      PKG_NAME: opencv-${{ matrix.ver.cv }}-ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}-${{ matrix.config }}
+      JAVA_PKG_NAME: opencv-${{ matrix.ver.cv }}-ubuntu-${{ matrix.list.os_ver }}-${{ matrix.arch }}-${{ matrix.config }}-java
       CMAKE_NAME: cmake-${{ matrix.ver.cmake }}-${{ matrix.os_name }}-${{ matrix.list.os_ver }}-${{ matrix.arch }}
       PYTHON_NAME: python-${{ matrix.ver.python }}-${{ matrix.os_name }}-${{ matrix.list.os_ver }}-${{ matrix.arch }}
       ANT_NAME: apache-ant-${{ matrix.ver.ant }}-bin
 
 
     steps:
+      #################################################################################################################################################################
       # 检出代码
       - uses: actions/checkout@v4
 
@@ -59,22 +69,25 @@ jobs:
           path: opencv-${{ matrix.ver.cv }}
           ref: ${{ matrix.ver.cv }}
           submodules: recursive
-
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       # 复制
       - name: copy
         run: |
           cp ${{ env.BUILD_SCRIPT }} opencv-${{ matrix.ver.cv }}
           cp ${{ env.BUILD_OPTIONS }} opencv-${{ matrix.ver.cv }}
-
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       - name: Host - update
         run: sudo apt-get update
 
       - name: Host - Install host qemu-static
-        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+        run: sudo apt-get install -y qemu binfmt-support qemu-user-static # 利用x86机器编译ARM架构
 
       - name: Host - Docker multiarch bootstrap
         run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       - name: deploy cmake
         run: |
           wget https://github.com/benjaminwan/CmakeBuilder/releases/download/${{ matrix.ver.cmake }}/${{ env.CMAKE_NAME }}.7z -O ${{ env.CMAKE_NAME }}.7z
@@ -92,7 +105,8 @@ jobs:
           wget https://dlcdn.apache.org/ant/binaries/${{ env.ANT_NAME }}.tar.gz -O ${{ env.ANT_NAME }}.tar.gz
           tar -xf ${{ env.ANT_NAME }}.tar.gz
           rm ${{ env.ANT_NAME }}.tar.gz
-
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       - name: Host - Create Docker template env file
         run: |
           echo "PATH=/root/cmake-${{ matrix.ver.cmake }}/bin:/root/python-${{ matrix.ver.python }}/bin:/root/apache-ant-${{ matrix.ver.ant }}/bin:/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" > env.custom
@@ -108,41 +122,43 @@ jobs:
       - name: Docker - install build deps
         run: docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get install -y build-essential git software-properties-common
 
-      - name: Docker - install jdk
-        run: |
-          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} add-apt-repository -y ppa:openjdk-r/ppa
-          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get update
-          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get -y install ${{ matrix.ver.jdk }}
-          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} java -version
-          JAVA_DIR=$(docker exec ${{ matrix.os_name }} readlink -f /usr/bin/javac | sed "s:/bin/javac::")
-          echo "$JAVA_DIR"
-          echo "JAVA_HOME=$JAVA_DIR" >> env.custom
-          echo "JAVA_INCLUDE_PATH=$JAVA_DIR/include" >> env.custom
-
+#      - name: Docker - install jdk
+#        run: |
+#          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} add-apt-repository -y ppa:openjdk-r/ppa
+#          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get update
+#          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} apt-get -y install ${{ matrix.ver.jdk }}
+#          docker exec --env-file env.custom -w /root ${{ matrix.os_name }} java -version
+#          JAVA_DIR=$(docker exec ${{ matrix.os_name }} readlink -f /usr/bin/javac | sed "s:/bin/javac::")
+#          echo "$JAVA_DIR"
+#          echo "JAVA_HOME=$JAVA_DIR" >> env.custom
+#          echo "JAVA_INCLUDE_PATH=$JAVA_DIR/include" >> env.custom
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       - name: Docker - build
         run: |
           docker exec --env-file env.custom -w /root ${{ matrix.os_name }} git config --global --add safe.directory "*"
           docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} chmod a+x ${{ env.BUILD_SCRIPT }}
-          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} ./${{ env.BUILD_SCRIPT }} -n '${{ matrix.arch }}'
+          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} ./${{ env.BUILD_SCRIPT }} -n '${{ matrix.arch }}' -c '${{matrix.config}}'
 
       # install文件夹改名linux，并使用7z压缩
       - name: 7zip
         run: |
-          cp -r opencv-${{ matrix.ver.cv }}/build-Release-${{ matrix.arch }}/install ${{ env.PKG_NAME }}
+          cp -r opencv-${{ matrix.ver.cv }}/build-Linux-${{ matrix.arch }}/install/${{matrix.config}} ${{ env.PKG_NAME }}
           7z a ${{ env.PKG_NAME }}.7z ${{ env.PKG_NAME }}
           rm -r -f ${{ env.PKG_NAME }}
 
-      - name: Docker - build
-        run: |
-          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} chmod a+x ${{ env.BUILD_SCRIPT }}
-          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} ./${{ env.BUILD_SCRIPT }} -n '${{ matrix.arch }}' -j
-
-      - name: 7zip java
-        run: |
-          cp -r opencv-${{ matrix.ver.cv }}/build-Release-${{ matrix.arch }}/install/share/java/opencv4 ${{ env.JAVA_PKG_NAME }}
-          7z a ${{ env.JAVA_PKG_NAME }}.7z ${{ env.JAVA_PKG_NAME }}
-          rm -r -f ${{ env.JAVA_PKG_NAME }}
-
+#      - name: Docker - build
+#        run: |
+#          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} chmod a+x ${{ env.BUILD_SCRIPT }}
+#          docker exec --env-file env.custom -w /root/opencv-${{ matrix.ver.cv }} ${{ matrix.os_name }} ./${{ env.BUILD_SCRIPT }} -n '${{ matrix.arch }}' -j
+#
+#      - name: 7zip java
+#        run: |
+#          cp -r opencv-${{ matrix.ver.cv }}/build-Linux-${{ matrix.arch }}/install/${{matrix.config}}/share/java/opencv4 ${{ env.JAVA_PKG_NAME }}
+#          7z a ${{ env.JAVA_PKG_NAME }}.7z ${{ env.JAVA_PKG_NAME }}
+#          rm -r -f ${{ env.JAVA_PKG_NAME }}
+      #################################################################################################################################################################
+      #################################################################################################################################################################
       # 上传artifact
 #      - name: upload
 #        uses: actions/upload-artifact@v4

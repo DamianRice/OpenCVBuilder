@@ -15,7 +15,7 @@ jobs:
           - { os_ver: 13, java: 8 }
           - { os_ver: 14, java: 11 }
           - { os_ver: 15, java: 11 }
-          - { os_ver: 16, java: 11 }
+#          - { os_ver: 16, java: 11 }  # 16找不到对应的workflow，编译会失败
         arch:
           [
             x86_64,
@@ -37,6 +37,8 @@ jobs:
           - arch: arm64e
 
     runs-on: macos-${{ matrix.list.os_ver }}
+
+    name: macos-${{ matrix.list.os_ver }}-${{ matrix.ver.cv }}-${{ matrix.arch }}-${{ matrix.config }}
 
     env:
       BUILD_SCRIPT: build-opencv4-mac.sh
@@ -76,7 +78,7 @@ jobs:
           submodules: recursive
 
       # 检出opencv_contrib
-      - name: checkout opencv
+      - name: checkout opencv contrib
         uses: actions/checkout@v4
         with:
           repository: opencv/opencv_contrib
