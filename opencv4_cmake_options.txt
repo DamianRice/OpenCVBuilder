@@ -78,7 +78,7 @@
 -DBUILD_opencv_calib3d=ON
 -DBUILD_opencv_core=ON
 -DBUILD_opencv_features2d=ON
--DBUILD_opencv_xfeatures2d=ON
+-DBUILD_opencv_xfeatures2d=OFF
 -DBUILD_opencv_objdetect=ON
 -DBUILD_opencv_imgcodecs=ON
 -DBUILD_opencv_imgproc=ON

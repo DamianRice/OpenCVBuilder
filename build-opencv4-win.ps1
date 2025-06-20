@@ -148,7 +148,7 @@ $LogicalProcessorsNum = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalPr
 $buildArgs += @('--build', $OutPutPath, '--config', $BuildType, '--parallel', $LogicalProcessorsNum);
 $buildCall = ('cmake {0}' -f ($buildArgs -Join ' '));
 
-$installArgs += @('--install', $OutPutPath, '--config', $BuildType)
+$installArgs += @('--install', $OutPutPath, '--config', $BuildType) # GenArgs里已经写好了--prefix，这里就不需要了
 $installCall = ('cmake {0}' -f ($installArgs -Join ' '))
 
 Clear-Host
